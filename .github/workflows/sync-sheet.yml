@@ -1,26 +1,65 @@
-name: Weekly fallback rebuild
+name: Sheet → Vercel sync
 
-# The primary update path is now: Google Sheet edit → Apps Script onEdit
-# trigger → Vercel deploy hook → Vercel rebuilds with fresh xlsx pulled at
-# build time. This workflow is just a paranoid weekly fallback in case the
-# Apps Script trigger is disabled or quietly broken.
+# Polls the public Drive xlsx every 5 minutes, hashes it, and only fires
+# the Vercel deploy hook when the hash changed since the last run.
 #
-# Cron is in UTC. 04:00 UTC = 06:00 CEST (summer) / 05:00 CET (winter).
+# The dedup uses GitHub Actions cache with the hash as key:
+#   - cache hit  → we already triggered Vercel for this content, skip
+#   - cache miss → new content, ping Vercel + write the marker into cache
+#
+# Latency: edit a cell in the Sheet → live site updated within ~5-6 min.
+# Cost: ~8640 runs/month on GitHub-hosted runners. Free tier on a public
+# repo is unlimited, so this is fully covered.
+
 on:
   schedule:
-    - cron: "0 4 * * 1"
+    - cron: "*/5 * * * *"
   workflow_dispatch: {}
 
+concurrency:
+  group: sheet-sync
+  cancel-in-progress: false
+
 jobs:
-  trigger-rebuild:
+  check-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Vercel deploy hook
+      - name: Download xlsx from Drive
+        env:
+          SHEET_ID: 1MOIRNVbH1W0zTa0lVpDC3uVpyE48-J-w
+        run: |
+          curl -fsSL \
+            -o /tmp/sheet.xlsx \
+            "https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=xlsx"
+          file /tmp/sheet.xlsx
+
+      - name: Compute content hash
+        id: hash
+        run: |
+          HASH=$(sha256sum /tmp/sheet.xlsx | cut -c1-16)
+          echo "value=$HASH" >> "$GITHUB_OUTPUT"
+          echo "Sheet hash: $HASH"
+
+      - name: Look up hash in cache
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/marker
+          key: sheet-hash-${{ steps.hash.outputs.value }}
+
+      - name: Mark new hash
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          echo "${{ steps.hash.outputs.value }}" > /tmp/marker
+
+      - name: Trigger Vercel deploy hook (new content)
+        if: steps.cache.outputs.cache-hit != 'true'
         env:
           HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
         run: |
-          if [ -z "$HOOK" ]; then
-            echo "VERCEL_DEPLOY_HOOK secret not set — skipping."
-            exit 0
-          fi
+          echo "↻ New Sheet content detected — pinging Vercel."
           curl -fsSL -X POST "$HOOK" | head -200
+
+      - name: Skip (no changes)
+        if: steps.cache.outputs.cache-hit == 'true'
+        run: echo "✓ Sheet hash unchanged — no deploy needed."
