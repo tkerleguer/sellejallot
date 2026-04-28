@@ -12,3 +12,6 @@ dist-ssr
 
 # Transient sync artifacts
 scripts/data/drive-blob.json
+
+# TypeScript build cache
+*.tsbuildinfo
