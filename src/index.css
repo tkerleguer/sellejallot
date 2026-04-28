@@ -1,0 +1,123 @@
+@import "tailwindcss";
+
+/* ─── Brand fonts (Selle Jallot brandbook) ───────────────────────── */
+@font-face {
+  font-family: "Poppins";
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/poppins/Poppins-Regular.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Poppins";
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/poppins/Poppins-Medium.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Poppins";
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/poppins/Poppins-SemiBold.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Poppins";
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/poppins/Poppins-Bold.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Poppins";
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/poppins/Poppins-ExtraBold.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Poppins";
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/poppins/Poppins-Black.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Space Mono";
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/space-mono/SpaceMono-Regular.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Space Mono";
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/space-mono/SpaceMono-Bold.ttf") format("truetype");
+}
+
+@layer base {
+  :root {
+    --background: 36 23% 95%;
+    --foreground: 170 100% 13%;
+    --card: 0 0% 100%;
+    --card-foreground: 170 100% 13%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 170 100% 13%;
+    --primary: 170 100% 13%;
+    --primary-foreground: 36 23% 95%;
+    --secondary: 36 18% 88%;
+    --secondary-foreground: 170 100% 13%;
+    --muted: 36 18% 88%;
+    --muted-foreground: 170 20% 40%;
+    --accent: 14 78% 57%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 36 18% 88%;
+    --input: 36 18% 88%;
+    --ring: 170 100% 13%;
+    --radius: 0.625rem;
+  }
+
+  body {
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: "Poppins", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-sm: calc(var(--radius) - 2px);
+
+  --font-sans:
+    "Poppins", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-display: "Poppins", ui-sans-serif, system-ui, sans-serif;
+}
