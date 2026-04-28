@@ -1,16 +1,18 @@
 /**
  * Sync the bike compatibility database from the Google Sheet (xlsx export).
  *
- * Run via: `npm run sync` (uses tsx).
+ * Default behaviour: fetches the latest xlsx from the public Drive URL,
+ * caches it locally for offline dev, then regenerates `src/data/bikes.ts`.
  *
- * Requires the `selle-jallot-database.xlsx` file to be present locally at
- * `scripts/data/selle-jallot-database.xlsx`. The cron pipeline pulls a fresh
- * copy from Drive before invoking this script.
+ * Run via: `npm run sync`. Used at Vercel build time and by GitHub Actions.
  *
- * Output: writes a TS module to `src/data/bikes.ts` consumed by the configurator.
+ * Env vars:
+ *   SHEET_ID    Override Drive file ID (default: hardcoded)
+ *   SYNC_FETCH  Set to "false" to skip Drive fetch and use the cached xlsx
+ *               (useful for local dev when offline)
  */
 
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
@@ -21,11 +23,40 @@ const ROOT = resolve(__dirname, "..");
 const XLSX_PATH = resolve(ROOT, "scripts/data/selle-jallot-database.xlsx");
 const OUT_PATH = resolve(ROOT, "src/data/bikes.ts");
 
-if (!existsSync(XLSX_PATH)) {
-  console.error(`Missing xlsx at ${XLSX_PATH}`);
-  console.error(
-    "Drop the latest xlsx export there, or run the Drive download step first.",
-  );
+const SHEET_ID = process.env.SHEET_ID ?? "1MOIRNVbH1W0zTa0lVpDC3uVpyE48-J-w";
+const FETCH_FRESH = process.env.SYNC_FETCH !== "false";
+
+let xlsxBuffer: Buffer;
+if (FETCH_FRESH) {
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=xlsx`;
+  console.log(`↓ Fetching xlsx from Drive…`);
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    xlsxBuffer = Buffer.from(await res.arrayBuffer());
+    mkdirSync(dirname(XLSX_PATH), { recursive: true });
+    writeFileSync(XLSX_PATH, xlsxBuffer);
+    console.log(
+      `  ✓ Got ${xlsxBuffer.length} bytes, cached at ${XLSX_PATH}`,
+    );
+  } catch (err) {
+    if (existsSync(XLSX_PATH)) {
+      console.warn(
+        `  ⚠ Drive fetch failed (${(err as Error).message}); using cached xlsx`,
+      );
+      xlsxBuffer = readFileSync(XLSX_PATH);
+    } else {
+      console.error(
+        `  ✗ Drive fetch failed and no cached xlsx at ${XLSX_PATH}`,
+      );
+      throw err;
+    }
+  }
+} else if (existsSync(XLSX_PATH)) {
+  console.log(`Using cached xlsx (SYNC_FETCH=false)`);
+  xlsxBuffer = readFileSync(XLSX_PATH);
+} else {
+  console.error(`Missing xlsx at ${XLSX_PATH} and SYNC_FETCH=false`);
   process.exit(1);
 }
 
@@ -50,7 +81,7 @@ interface IncompatibleBrand {
   scope: "all" | string[];
 }
 
-const wb = XLSX.read(readFileSync(XLSX_PATH), { type: "buffer" });
+const wb = XLSX.read(xlsxBuffer, { type: "buffer" });
 
 const compatRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(
   wb.Sheets[wb.SheetNames.find((n) => n.includes("Compatibles"))!],
