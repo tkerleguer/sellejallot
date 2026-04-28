@@ -1,0 +1,53 @@
+name: Sync database from Google Sheet
+
+# Runs every Monday at 06:00 Europe/Paris.
+# Cron is in UTC: 04:00 UTC during summer (CEST), 05:00 UTC during winter (CET).
+# We run twice and let the script no-op if there's nothing to sync — cheap and DST-proof.
+on:
+  schedule:
+    - cron: "0 4 * * 1"
+    - cron: "0 5 * * 1"
+  workflow_dispatch: {}
+
+# We need contents:write to commit + push the regenerated bikes.ts
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download latest xlsx from Google Drive
+        env:
+          SHEET_ID: 1MOIRNVbH1W0zTa0lVpDC3uVpyE48-J-w
+        run: |
+          mkdir -p scripts/data
+          curl -fsSL \
+            -o scripts/data/selle-jallot-database.xlsx \
+            "https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=xlsx"
+          file scripts/data/selle-jallot-database.xlsx
+
+      - name: Regenerate src/data/bikes.ts
+        run: npm run sync
+
+      - name: Commit & push if changed
+        run: |
+          git config user.name  "selle-jallot-sync[bot]"
+          git config user.email "sync@sellejallot.local"
+          if git diff --quiet -- src/data/bikes.ts; then
+            echo "No database changes — skipping commit."
+            exit 0
+          fi
+          git add src/data/bikes.ts
+          git commit -m "chore(db): sync bikes from Google Sheet ($(date -u +%Y-%m-%d))"
+          git push origin main
